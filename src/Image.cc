@@ -33,7 +33,7 @@ Image::Initialize(Local<Object> target)
   // Constructor
   Local<FunctionTemplate> constructor = FunctionTemplate::New(isolate, Image::New);
   constructor->InstanceTemplate()->SetInternalFieldCount(1);
-  constructor->SetClassName(String::NewFromUtf8(isolate, "Image"));
+  constructor->SetClassName(String::NewFromUtf8(isolate, "Image", NewStringType::kNormal).ToLocalChecked());
   
   // Prototype
   Local<ObjectTemplate> proto = constructor->PrototypeTemplate();
@@ -43,14 +43,14 @@ Image::Initialize(Local<Object> target)
   NODE_SET_PROTOTYPE_METHOD(constructor, "process", Process);
   NODE_SET_PROTOTYPE_METHOD(constructor, "saveTo", SaveTo);
 
-  proto->SetAccessor(String::NewFromUtf8(isolate, "width"), GetWidth);
-  proto->SetAccessor(String::NewFromUtf8(isolate, "height"), GetHeight);
+  proto->SetAccessor(String::NewFromUtf8(isolate, "width", NewStringType::kNormal).ToLocalChecked(), GetWidth);
+  proto->SetAccessor(String::NewFromUtf8(isolate, "height", NewStringType::kNormal).ToLocalChecked(), GetHeight);
 
   Local<Context> context = isolate->GetCurrentContext();
 
   target->Set(
       context,
-      String::NewFromUtf8(isolate, "Image"),
+      String::NewFromUtf8(isolate, "Image", NewStringType::kNormal).ToLocalChecked(),
       constructor->GetFunction(context).ToLocalChecked()
   );
 }
@@ -64,14 +64,14 @@ void Image::New(const FunctionCallbackInfo<Value> &args)
   image->Wrap(args.This());
 
   if (args.Length() < 1) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "epeg.image.new - Must pass data or path")));
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "epeg.image.new - Must pass data or path", NewStringType::kNormal).ToLocalChecked()));
     return;
   }
 
   if (args[0]->IsObject()) {
     Local<Object> object = Local<Object>::Cast(args[0]);
-    Local<Value> pathValue = object->Get(context, String::NewFromUtf8(isolate, "path")).ToLocalChecked();
-    Local<Value> dataValue = object->Get(context, String::NewFromUtf8(isolate, "data")).ToLocalChecked();
+    Local<Value> pathValue = object->Get(context, String::NewFromUtf8(isolate, "path", NewStringType::kNormal).ToLocalChecked()).ToLocalChecked();
+    Local<Value> dataValue = object->Get(context, String::NewFromUtf8(isolate, "data", NewStringType::kNormal).ToLocalChecked()).ToLocalChecked();
 
     if (pathValue->IsString()) {
       String::Utf8Value path(isolate, pathValue);
@@ -85,12 +85,12 @@ void Image::New(const FunctionCallbackInfo<Value> &args)
     }
     else {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-          "[!] epeg.image.new - Invalid arguents. Must pass data or path")));
+          "[!] epeg.image.new - Invalid arguents. Must pass data or path", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
 
     if (!image->im) {
-      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.new - Failed to create image")));
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.new - Failed to create image", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
     epeg_size_get(image->im, &(image->width), &(image->height));
@@ -114,14 +114,14 @@ Image::Process(const FunctionCallbackInfo<Value> &args)
   Image * image = ObjectWrap::Unwrap<Image>(args.This());
   if (!image->im) {
     isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-                 "[!] epeg.image.process() - Image was null. Task may already be finished?")));
+                 "[!] epeg.image.process() - Image was null. Task may already be finished?", NewStringType::kNormal).ToLocalChecked()));
     return;
   }
 
   epeg_memory_output_set(image->im, &data, &size);
 
-  if (image->ProcessInternal() != 0) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.process - Could not save to buffer")));
+  if (image->ProcessInternal(isolate) != 0) {
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.process - Could not save to buffer", NewStringType::kNormal).ToLocalChecked()));
     return;
   }
 
@@ -142,13 +142,13 @@ Image::SaveTo(const FunctionCallbackInfo<Value> &args)
   Image * image = ObjectWrap::Unwrap<Image>(args.This());
   if (!image->im) {
     isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-                  "[!] epeg.image.saveTo - Image was null. Task may already be finished?")));
+                  "[!] epeg.image.saveTo - Image was null. Task may already be finished?", NewStringType::kNormal).ToLocalChecked()));
     return;
   }
 
   if (!args[0]->IsString()) {
     isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-                  "[!] epeg.image.saveTo - Arg1 must be string path to save")));
+                  "[!] epeg.image.saveTo - Arg1 must be string path to save", NewStringType::kNormal).ToLocalChecked()));
     return;
   }
   String::Utf8Value output_file(isolate, args[0]->ToString(isolate));
@@ -157,8 +157,8 @@ Image::SaveTo(const FunctionCallbackInfo<Value> &args)
 
   epeg_file_output_set(image->im, *output_file);
 
-  if (image->ProcessInternal() != 0) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.saveTo - Could not save to file")));
+  if (image->ProcessInternal(isolate) != 0) {
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "[!] epeg.image.saveTo - Could not save to file", NewStringType::kNormal).ToLocalChecked()));
     return;
   }
 
@@ -181,13 +181,13 @@ Image::Downsize(const FunctionCallbackInfo<Value>& args)
     // }
     if (args.Length() < 2) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-             "[!] epeg.image.downsize - Downsize expects two arguments!")));
+             "[!] epeg.image.downsize - Downsize expects two arguments!", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
 
     if (!args[0]->IsInt32() || !args[1]->IsInt32()) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, 
-             "[!] epeg.image.downsize - Downsize arguments must be integers! (Int32)!")));
+             "[!] epeg.image.downsize - Downsize arguments must be integers! (Int32)!", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
 
@@ -196,7 +196,7 @@ Image::Downsize(const FunctionCallbackInfo<Value>& args)
     if (width < 0 || width > image->width ||
         height < 0 || height > image->height) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, 
-             "[!] epeg.image.downsize - Argument discrepancy! new height/width must be less than old height/width and non-negative!")));
+             "[!] epeg.image.downsize - Argument discrepancy! new height/width must be less than old height/width and non-negative!", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
 
@@ -222,16 +222,16 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
 
     if (image->scaled) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-             "[!] epeg.image.crop - Image has already been scaled. So we can't crop. Get buffer with .process() and make new Image")));
+             "[!] epeg.image.crop - Image has already been scaled. So we can't crop. Get buffer with .process() and make new Image", NewStringType::kNormal).ToLocalChecked()));
       return;
     } else if (image->cropped) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-             "[!] epeg.image.crop - Image has already been cropped. So we can't crop. Get buffer with .process() and make new Image")));
+             "[!] epeg.image.crop - Image has already been cropped. So we can't crop. Get buffer with .process() and make new Image", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
     if (args.Length() < 4) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-              "[!] epeg.image.crop - Four arguments must be passed to crop: (startX, startY, newWidth, newHeight)")));
+              "[!] epeg.image.crop - Four arguments must be passed to crop: (startX, startY, newWidth, newHeight)", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
 
@@ -240,7 +240,7 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
         !args[2]->IsInt32() ||
         !args[3]->IsInt32()) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, 
-              "[!] epeg.image.crop - Arguments to crop must be integers. (Int32)")));
+              "[!] epeg.image.crop - Arguments to crop must be integers. (Int32)", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
 
@@ -253,7 +253,7 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
     if (x < 0 || y < 0 || width < 0 || height < 0 ||
         (x + width) > image->width || (y + height) > image->height) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,
-               "[!] epeg.image.crop - Discrepancy! Trying to crop outside bounds (or negative argument passed?)")));
+               "[!] epeg.image.crop - Discrepancy! Trying to crop outside bounds (or negative argument passed?)", NewStringType::kNormal).ToLocalChecked()));
       return;
     }
 
@@ -287,12 +287,15 @@ Image::GetHeight(Local<String>, const PropertyCallbackInfo<Value> &info)
 }
 
 int
-Image::ProcessInternal()
+Image::ProcessInternal(Isolate* isolate)
 {
   if (scaled) {
     return epeg_encode(im);
   }
   else if (cropped) {
     return epeg_trim(im);
+  } else {
+    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, 
+              "[!] epeg.image.ProcessInternal - Image already scaled/cropped! Not allowed?", NewStringType::kNormal).ToLocalChecked()));
   }
 }

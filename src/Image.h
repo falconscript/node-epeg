@@ -28,7 +28,7 @@ class Image: public node::ObjectWrap {
 
  private:
   ~Image();
-  int   ProcessInternal();
+  int   ProcessInternal(Isolate* isolate);
 
   Epeg_Image *  im;
   int           width;
