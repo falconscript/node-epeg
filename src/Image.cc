@@ -74,12 +74,12 @@ void Image::New(const FunctionCallbackInfo<Value> &args)
     Local<Value> dataValue = object->Get(context, String::NewFromUtf8(isolate, "data")).ToLocalChecked();
 
     if (pathValue->IsString()) {
-      String::Utf8Value path(pathValue);
+      String::Utf8Value path(isolate, pathValue);
       image->im = epeg_file_open(*path);
     }
     else if (node::Buffer::HasInstance(dataValue)) {
-      unsigned char * buffer = (uint8_t *) node::Buffer::Data(dataValue->ToObject());
-      int size = node::Buffer::Length(dataValue->ToObject());
+      unsigned char * buffer = (uint8_t *) node::Buffer::Data(dataValue->ToObject(isolate));
+      int size = node::Buffer::Length(dataValue->ToObject(isolate));
 
       image->im = epeg_memory_open(buffer, size);
     }
@@ -151,7 +151,9 @@ Image::SaveTo(const FunctionCallbackInfo<Value> &args)
                   "[!] epeg.image.saveTo - Arg1 must be string path to save")));
     return;
   }
-  String::Utf8Value output_file(args[0]->ToString());
+  String::Utf8Value output_file(isolate, args[0]->ToString(isolate));
+  // NOTE 07-10-19: https://github.com/bcoin-org/bcrypto/issues/7 this line may be more complete than passing isolate?
+  //String::Utf8Value output_file(isolate, args[0]->ToString(Nan::GetCurrentContext()).FromMaybe(v8::Local<v8::String>()));
 
   epeg_file_output_set(image->im, *output_file);
 
@@ -170,6 +172,7 @@ void
 Image::Downsize(const FunctionCallbackInfo<Value>& args)
 {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
     // if (image->scaled || image->cropped) {
@@ -188,8 +191,8 @@ Image::Downsize(const FunctionCallbackInfo<Value>& args)
       return;
     }
 
-    int width = args[0]->Int32Value();
-    int height = args[1]->Int32Value();
+    int width = args[0]->Int32Value(context).FromJust();
+    int height = args[1]->Int32Value(context).FromJust();
     if (width < 0 || width > image->width ||
         height < 0 || height > image->height) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, 
@@ -199,7 +202,7 @@ Image::Downsize(const FunctionCallbackInfo<Value>& args)
 
     int quality = DEFAULT_QUALITY;
     if (args[2]->IsInt32())
-        quality = args[2]->Int32Value();
+        quality = args[2]->Int32Value(context).FromJust();
 
     epeg_quality_set(image->im, quality);
     epeg_decode_size_set(image->im, width, height);
@@ -213,6 +216,7 @@ void
 Image::Crop(const FunctionCallbackInfo<Value>& args)
 {
     Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
 
     Image * image = ObjectWrap::Unwrap<Image>(args.This());
 
@@ -240,11 +244,11 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
       return;
     }
 
-    int x = args[0]->Int32Value();
-    int y = args[1]->Int32Value();
+    int x = args[0]->Int32Value(context).FromJust();
+    int y = args[1]->Int32Value(context).FromJust();
 
-    int width = args[2]->Int32Value();
-    int height = args[3]->Int32Value();
+    int width = args[2]->Int32Value(context).FromJust();
+    int height = args[3]->Int32Value(context).FromJust();
 
     if (x < 0 || y < 0 || width < 0 || height < 0 ||
         (x + width) > image->width || (y + height) > image->height) {
@@ -255,7 +259,7 @@ Image::Crop(const FunctionCallbackInfo<Value>& args)
 
     int quality = DEFAULT_QUALITY;
     if (args[4]->IsInt32())
-        quality = args[4]->Int32Value();
+        quality = args[4]->Int32Value(context).FromJust();
 
     epeg_quality_set(image->im, quality);
     epeg_decode_bounds_set(image->im, x, y, width, height);
