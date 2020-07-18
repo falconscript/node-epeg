@@ -78,8 +78,8 @@ void Image::New(const FunctionCallbackInfo<Value> &args)
       image->im = epeg_file_open(*path);
     }
     else if (node::Buffer::HasInstance(dataValue)) {
-      unsigned char * buffer = (uint8_t *) node::Buffer::Data(dataValue->ToObject(isolate));
-      int size = node::Buffer::Length(dataValue->ToObject(isolate));
+      unsigned char * buffer = (uint8_t *) node::Buffer::Data(dataValue);
+      int size = node::Buffer::Length(dataValue);
 
       image->im = epeg_memory_open(buffer, size);
     }
@@ -151,7 +151,7 @@ Image::SaveTo(const FunctionCallbackInfo<Value> &args)
                   "[!] epeg.image.saveTo - Arg1 must be string path to save", NewStringType::kNormal).ToLocalChecked()));
     return;
   }
-  String::Utf8Value output_file(isolate, args[0]->ToString(isolate));
+  String::Utf8Value output_file(isolate, args[0]);
   // NOTE 07-10-19: https://github.com/bcoin-org/bcrypto/issues/7 this line may be more complete than passing isolate?
   //String::Utf8Value output_file(isolate, args[0]->ToString(Nan::GetCurrentContext()).FromMaybe(v8::Local<v8::String>()));
 
